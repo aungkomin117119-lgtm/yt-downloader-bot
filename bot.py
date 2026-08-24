@@ -26,14 +26,15 @@ async def download_mp3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mp3_filename = f"song_{unique_id}.mp3"
 
     ydl_opts = {
-        'format': 'bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        'outtmpl': output_template,
-    }
+    'format': 'bestaudio/best',
+    'cookiefile': 'cookies.txt',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'outtmpl': output_template,
+}
 
     try:
         loop = asyncio.get_running_loop()
