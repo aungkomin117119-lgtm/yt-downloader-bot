@@ -25,9 +25,10 @@ async def download_mp3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     output_template = f"song_{unique_id}.%(ext)s"
     mp3_filename = f"song_{unique_id}.mp3"
 
-    ydl_opts = {
+   ydl_opts = {
     'format': 'bestaudio/best',
     'cookiefile': 'cookies.txt',
+    'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
