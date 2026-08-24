@@ -5,8 +5,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
 
-# Telegram Bot Token (Environment Variable မှ ရယူခြင်း)
-TOKEN = os.getenv("8842598630:AAFNOSbt4K8Eg8zZWjQHwnHwy_TKKEv9Xkg")
+TOKEN = "8842598630:AAFNOSbt4K8Eg8zZWjQHwnHwy_TKKEv9Xkg"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_first_name = update.effective_user.first_name
@@ -25,7 +24,6 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     output_template = f"song_{unique_id}.%(ext)s"
     mp3_filename = f"song_{unique_id}.mp3"
 
-    # YouTube Bot-Detection ကျော်လွှားရန်နှင့် အဆင်ပြေစေရန် ချိန်ညှိထားသော Option များ
     ydl_opts = {
         'format': 'bestaudio/best',
         'cookiefile': 'cookies.txt',
@@ -48,7 +46,6 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         loop = asyncio.get_running_loop()
 
-        # Download ပြုလုပ်ခြင်း
         def run_yt_dlp():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -58,7 +55,6 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         title, uploader = await loop.run_in_executor(None, run_yt_dlp)
 
-        # MP3 ဖိုင် Telegram သို့ ပို့ပေးခြင်း
         if os.path.exists(mp3_filename):
             with open(mp3_filename, 'rb') as audio_file:
                 await update.message.reply_audio(
@@ -75,13 +71,12 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_message.edit_text(f"အမှားအယွင်းရှိပါသည်။ ERROR: {str(e)}")
 
     finally:
-        # ယာယီဖိုင်များကို ပြန်ဖျက်ပေးခြင်း
         if os.path.exists(mp3_filename):
             os.remove(mp3_filename)
 
 def main():
     if not TOKEN:
-        print("Error: BOT_TOKEN ကို Environment Variable ထဲတွင် မတွေ့ပါ။")
+        print("Error: TOKEN မရှိပါ။")
         return
 
     app = Application.builder().token(TOKEN).build()
