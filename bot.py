@@ -1,8 +1,21 @@
 import os
 import uuid
 import requests
+from threading import Thread
+from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+# Render Port Detection ကျော်လွှားရန် Flask Server
+app_web = Flask(__name__)
+
+@app_web.route('/')
+def home():
+    return "Bot is running perfectly!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 8080))
+    app_web.run(host='0.0.0.0', port=port)
 
 TOKEN = "8842598630:AAFNOSbt4K8Eg8zZWjQHwnHwy_TKKEv9Xkg"
 
@@ -23,7 +36,6 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mp3_filename = f"song_{unique_id}.mp3"
 
     try:
-        # Cobalt API သို့ YouTube Link ပေးပို့၍ Direct Audio Download URL ရယူခြင်း
         api_url = "https://api.cobalt.tools/api/json"
         headers = {
             "Accept": "application/json",
@@ -41,13 +53,11 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.status_code == 200 and res_data.get("status") in ["stream", "redirect"]:
             download_link = res_data.get("url")
             
-            # MP3 ဖိုင်ကို ဒေါင်းလုဒ်ဆွဲယူခြင်း
             audio_data = requests.get(download_link, stream=True)
             with open(mp3_filename, 'wb') as f:
                 for chunk in audio_data.iter_content(chunk_size=8192):
                     f.write(chunk)
 
-            # Telegram သို့ ပို့ပေးခြင်း
             if os.path.exists(mp3_filename):
                 with open(mp3_filename, 'rb') as audio_file:
                     await update.message.reply_audio(
@@ -72,6 +82,8 @@ def main():
     if not TOKEN:
         print("Error: TOKEN မရှိပါ။")
         return
+
+    Thread(target=run_flask).start()
 
     app = Application.builder().token(TOKEN).build()
 
