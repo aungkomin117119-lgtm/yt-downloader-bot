@@ -1,81 +1,96 @@
 import os
-import logging
-import asyncio
 import uuid
+import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
-TOKEN = '8842598630:AAFNOSbt4K8Eg8zZWjQHwnHwy_TKKEv9Xkg'
+# Telegram Bot Token (Environment Variable မှ ရယူခြင်း)
+TOKEN = os.getenv("8842598630:AAFNOSbt4K8Eg8zZWjQHwnHwy_TKKEv9Xkg")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("မင်္ဂလာပါ။ YouTube Link ပို့ပေးပါ၊ MP3 ဒေါင်းပေးပါမယ် Ma Shwe Zin Aung။")
+    user_first_name = update.effective_user.first_name
+    await update.message.reply_text(f"မင်္ဂလာပါ။ YouTube Link ပို့ပေးပါ။ MP3 ဒေါင်းပေးပါမယ် {user_first_name}။")
 
-async def download_mp3(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text
-    if "youtu" not in url:
-        await update.message.reply_text("ကျေးဇူးပြု၍ တရားဝင် YouTube Link ကို ပို့ပေးပါ Ma Shwe Zin Aung။")
+async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = update.message.text.strip()
+
+    if not ("youtube.com" in url or "youtu.be" in url):
+        await update.message.reply_text("ကျေးဇူးပြု၍ မှန်ကန်သော YouTube Link ကိုသာ ပို့ပေးပါ။")
         return
 
-    status_msg = await update.message.reply_text("သီချင်းကို ဒေါင်းလုဒ်ဆွဲနေပါပြီ...")
+    status_message = await update.message.reply_text("ဒေါင်းလုဒ်ဆွဲနေပါသည်။ ခဏစောင့်ပေးပါ...")
 
     unique_id = str(uuid.uuid4())[:8]
     output_template = f"song_{unique_id}.%(ext)s"
     mp3_filename = f"song_{unique_id}.mp3"
 
-   ydl_opts = {
-    'format': 'bestaudio/best',
-    'cookiefile': 'cookies.txt',
-    'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-    'extractor_args': {
-        'youtube': {
-            'player_client': ['ios', 'mweb'],
-        }
-    },
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
-    'outtmpl': output_template,
-}
+    # YouTube Bot-Detection ကျော်လွှားရန်နှင့် အဆင်ပြေစေရန် ချိန်ညှိထားသော Option များ
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'cookiefile': 'cookies.txt',
+        'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['ios', 'mweb'],
+            }
+        },
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'outtmpl': output_template,
+        'quiet': True,
+        'no_warnings': True,
+    }
+
     try:
         loop = asyncio.get_running_loop()
-        
-        # YouTube Info မှ Title နှင့် Uploader (Artist) နာမည် ရယူခြင်း
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=True))
-            song_title = info.get('title', 'Unknown Title')
-            song_artist = info.get('uploader', 'Unknown Artist')
 
-        await status_msg.edit_text("Telegram သို့ တင်ပေးနေပါပြီ...")
-        
+        # Download ပြုလုပ်ခြင်း
+        def run_yt_dlp():
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                title = info.get('title', 'Audio')
+                uploader = info.get('uploader', 'Unknown Artist')
+                return title, uploader
+
+        title, uploader = await loop.run_in_executor(None, run_yt_dlp)
+
+        # MP3 ဖိုင် Telegram သို့ ပို့ပေးခြင်း
         if os.path.exists(mp3_filename):
-            with open(mp3_filename, 'rb') as audio:
+            with open(mp3_filename, 'rb') as audio_file:
                 await update.message.reply_audio(
-                    audio=audio, 
-                    title=song_title,       # သီချင်းနာမည် ထည့်ပေးခြင်း
-                    performer=song_artist,   # ဆိုသူ/အနုပညာရှင် နာမည် ထည့်ပေးခြင်း
+                    audio=audio_file,
+                    title=title,
+                    performer=uploader,
                     caption="ရပါပြီခင်ဗျာ!"
                 )
-            os.remove(mp3_filename)
-            await status_msg.delete()
+            await status_message.delete()
         else:
-            await status_msg.edit_text("အသံဖိုင် ပြောင်းလဲရာတွင် အဆင်မပြေပါ။")
+            await status_message.edit_text("အမှားအယွင်းရှိပါသည်။ MP3 ဖိုင် ရှာမတွေ့ပါ။")
 
     except Exception as e:
-        await status_msg.edit_text(f"အမှားအယွင်းရှိပါသည်: {str(e)}")
+        await status_message.edit_text(f"အမှားအယွင်းရှိပါသည်။ ERROR: {str(e)}")
+
+    finally:
+        # ယာယီဖိုင်များကို ပြန်ဖျက်ပေးခြင်း
+        if os.path.exists(mp3_filename):
+            os.remove(mp3_filename)
 
 def main():
-    print("Bot စတင် အလုပ်လုပ်နေပါပြီ ...")
-    app = Application.builder().token(TOKEN).read_timeout(30).write_timeout(30).connect_timeout(30).build()
+    if not TOKEN:
+        print("Error: BOT_TOKEN ကို Environment Variable ထဲတွင် မတွေ့ပါ။")
+        return
+
+    app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_mp3))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_audio))
 
-    app.run_polling(drop_pending_updates=True)
+    print("Bot စတင်ပွင့်နေပါပြီ...")
+    app.run_polling()
 
 if __name__ == '__main__':
     main()
