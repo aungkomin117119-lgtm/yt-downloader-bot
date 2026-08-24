@@ -24,13 +24,14 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     output_template = f"song_{unique_id}.%(ext)s"
     mp3_filename = f"song_{unique_id}.mp3"
 
+    cookie_file_path = os.path.join(os.getcwd(), 'cookies.txt')
+
     ydl_opts = {
         'format': 'bestaudio/best',
-        'cookiefile': 'cookies.txt',
-        'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'extractor_args': {
             'youtube': {
-                'player_client': ['ios', 'mweb'],
+                'player_client': ['tv_embedded', 'android', 'web'],
             }
         },
         'postprocessors': [{
@@ -42,6 +43,9 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'quiet': True,
         'no_warnings': True,
     }
+
+    if os.path.exists(cookie_file_path):
+        ydl_opts['cookiefile'] = cookie_file_path
 
     try:
         loop = asyncio.get_running_loop()
