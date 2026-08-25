@@ -7,7 +7,6 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
 
-# Render Port Binding
 app_web = Flask(__name__)
 
 @app_web.route('/')
@@ -41,8 +40,7 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'format': 'bestaudio/best',
         'extractor_args': {
             'youtube': {
-                'player_client': ['android_creator', 'ios'],
-                'skip': ['webpage', 'configs'],
+                'player_client': ['android', 'ios'],
             }
         },
         'postprocessors': [{
