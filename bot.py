@@ -26,7 +26,7 @@ def extract_video_id(url):
     return None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_first_name = update.effective_user.first_name
+    user_first_name = update.effective_user.first_name or "မိတ်ဆွေ"
     await update.message.reply_text(f"မင်္ဂလာပါ။ YouTube Link ပို့ပေးပါ။ MP3 ဒေါင်းပေးပါမယ် {user_first_name}။")
 
 async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -43,7 +43,6 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mp3_filename = f"song_{unique_id}.mp3"
 
     try:
-        # Piped API Service သုံး၍ ဒေါင်းလုဒ် Link ရယူခြင်း
         api_url = f"https://pipedapi.kavin.rocks/streams/{video_id}"
         response = requests.get(api_url, timeout=10)
         
@@ -54,10 +53,8 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
             audio_streams = data.get('audioStreams', [])
 
             if audio_streams:
-                # Quality အကောင်းဆုံး Audio Stream ကို ရွေးထုတ်ခြင်း
                 audio_url = audio_streams[0].get('url')
                 
-                # File ကို Download ဆွဲခြင်း
                 audio_resp = requests.get(audio_url, stream=True)
                 with open(mp3_filename, 'wb') as f:
                     for chunk in audio_resp.iter_content(chunk_size=8192):
