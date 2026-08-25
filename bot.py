@@ -43,24 +43,40 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mp3_filename = f"song_{unique_id}.mp3"
 
     try:
-        api_url = f"https://pipedapi.kavin.rocks/streams/{video_id}"
-        response = requests.get(api_url, timeout=10)
+        # Direct Reliable API Endpoint
+        api_url = f"https://api.co/download?id={video_id}&type=mp3"
         
-        if response.status_code == 200:
-            data = response.json()
-            title = data.get('title', 'Audio')
-            uploader = data.get('uploader', 'Unknown Artist')
-            audio_streams = data.get('audioStreams', [])
+        # Fallback fast download API
+        fallback_api = f"https://youtube-mp36.p.rapidapi.com/dl?id={video_id}"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
 
-            if audio_streams:
-                audio_url = audio_streams[0].get('url')
-                
-                audio_resp = requests.get(audio_url, stream=True)
+        # Invidious Instance API
+        inv_url = f"https://invidious.nerdvpn.de/api/v1/videos/{video_id}"
+        res = requests.get(inv_url, headers=headers, timeout=10)
+
+        if res.status_code == 200:
+            data = res.json()
+            title = data.get('title', 'Audio')
+            uploader = data.get('author', 'Unknown Artist')
+            
+            # Extract audio stream directly
+            adaptive_formats = data.get('adaptiveFormats', [])
+            audio_url = None
+            for fmt in adaptive_formats:
+                if 'audio/' in fmt.get('type', ''):
+                    audio_url = fmt.get('url')
+                    break
+
+            if audio_url:
+                audio_resp = requests.get(audio_url, stream=True, headers=headers)
                 with open(mp3_filename, 'wb') as f:
                     for chunk in audio_resp.iter_content(chunk_size=8192):
                         f.write(chunk)
 
-                if os.path.exists(mp3_filename):
+                if os.path.exists(mp3_filename) and os.path.getsize(mp3_filename) > 0:
                     with open(mp3_filename, 'rb') as audio_file:
                         await update.message.reply_audio(
                             audio=audio_file,
@@ -69,12 +85,9 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             caption="ရပါပြီခင်ဗျာ!"
                         )
                     await status_message.delete()
-                else:
-                    await status_message.edit_text("အမှားအယွင်းရှိပါသည်။ MP3 ဖိုင် သိမ်းဆည်း၍ မရပါ။")
-            else:
-                await status_message.edit_text("Audio Format ရှာမတွေ့ပါ။")
-        else:
-            await status_message.edit_text("YouTube ဘက်မှ အချက်အလက်ယူ၍ မရပါ။ ခဏကြာမှ ပြန်စမ်းပေးပါ။")
+                    return
+
+        await status_message.edit_text("YouTube ဘက်မှ Audio ထုတ်ယူ၍ မရပါ။ အခြား Song Link ဖြင့် စမ်းပေးပါ။")
 
     except Exception as e:
         await status_message.edit_text(f"ဒေါင်းလုဒ်ဆွဲရာတွင် အမှားအယွင်းရှိနေပါသည်: {str(e)}")
